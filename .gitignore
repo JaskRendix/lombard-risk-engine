@@ -1,0 +1,64 @@
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Byte-compiled / optimized / DLL files
+*.egg
+*.egg-info/
+dist/
+build/
+pip-wheel-metadata/
+*.whl
+
+# Pytest cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# -------------------------
+# IDE / Editor
+# -------------------------
+# VSCode
+.vscode/
+
+# PyCharm / IntelliJ
+.idea/
+
+# MacOS
+.DS_Store
+
+# -------------------------
+# Project-specific
+# -------------------------
+# Local config or secrets (if any)
+*.local
+*.env
+
+# Ignore workflow artifacts but keep workflow definitions
+.github/workflows/*.log
+.github/workflows/*.tmp
+
+# -------------------------
+# Packaging
+# -------------------------
+*.manifest
+*.spec
+
+# -------------------------
+# Logs
+# -------------------------
+*.log
+logs/

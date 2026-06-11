@@ -1,0 +1,28 @@
+[project]
+name = "lombard-risk-engine"
+version = "0.1.0"
+description = "A modular Lombard Lending Risk Engine for collateral haircuts, LTV, liquidity, concentration, and stress testing."
+authors = [
+    { name = "Giorgio" }
+]
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+dependencies = [
+    "pandas",
+    "numpy",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lombard_risk*"]
