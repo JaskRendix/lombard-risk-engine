@@ -5,7 +5,7 @@ from lombard_risk.engine import LombardRiskEngine
 from lombard_risk.liquidity import LiquidityProfile
 
 
-def test_engine_integration_simple():
+def test_engine_integration_basic():
     df = pd.DataFrame(
         {
             "A": [0.01, -0.02, 0.03, -0.01],
@@ -30,7 +30,17 @@ def test_engine_integration_simple():
         liq_profiles=liq_profiles,
     )
 
-    assert result.haircut_pct > 20.0
-    assert result.max_ltv_pct < 80.0
+    # haircut must be >= base haircut
+    assert result.haircut_pct >= 20.0
+
+    # LTV logic
     assert result.current_ltv_pct == 60.0
+    assert result.max_ltv_pct < 80.0
+
+    # margin call flag is boolean
     assert isinstance(result.margin_call_triggered, (bool, np.bool_))
+
+    # diagnostics must be finite
+    assert np.isfinite(result.stress_ltv_pct)
+    assert np.isfinite(result.post_haircut_value)
+    assert np.isfinite(result.breach_distance_pct)

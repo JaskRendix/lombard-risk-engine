@@ -5,8 +5,14 @@ import pytest
 from lombard_risk.config import ALPHA, EWMA_LAMBDA
 from lombard_risk.market_models import (
     cornish_fisher_var,
+    ewma_es,
     ewma_vol,
+    expected_shortfall_from_returns,
+    gaussian_es,
     portfolio_returns,
+    sample_kurtosis,
+    sample_skewness,
+    scale_volatility,
     var_from_returns,
 )
 
@@ -142,3 +148,88 @@ def test_cornish_fisher_small_sample_stability():
     r = np.array([0.01, -0.02, 0.03])
     var_cf = cornish_fisher_var(r, 0.95)
     assert np.isfinite(var_cf)
+
+
+def test_expected_shortfall_basic():
+    r = pd.Series([-0.10, -0.05, 0.01, 0.02])
+    es = expected_shortfall_from_returns(r, 0.95)
+    assert es <= -0.05  # ES must be <= worst 5% losses
+    assert np.isfinite(es)
+
+
+def test_expected_shortfall_zero():
+    r = pd.Series([0.0, 0.0, 0.0])
+    assert expected_shortfall_from_returns(r) == 0.0
+
+
+def test_expected_shortfall_monotonicity():
+    mild = pd.Series([-0.01, -0.02, 0.00])
+    severe = pd.Series([-0.10, -0.20, -0.30])
+    assert expected_shortfall_from_returns(severe) < expected_shortfall_from_returns(
+        mild
+    )
+
+
+def test_gaussian_es_negative_for_normal():
+    np.random.seed(0)
+    r = pd.Series(np.random.normal(0, 0.01, size=5000))
+    es = gaussian_es(r, 0.99)
+    assert es < 0
+
+
+def test_gaussian_es_more_conservative_than_var():
+    np.random.seed(0)
+    r = pd.Series(np.random.normal(0, 0.01, size=5000))
+    var = var_from_returns(r, 0.99)
+    es = gaussian_es(r, 0.99)
+    assert es < var  # ES is always more conservative
+
+
+def test_ewma_es_basic():
+    r = pd.Series([-0.10, -0.02, 0.01, 0.03])
+    es = ewma_es(r, 0.95)
+    assert np.isfinite(es)
+
+
+def test_ewma_es_zero():
+    r = pd.Series([0.0, 0.0, 0.0])
+    assert ewma_es(r) == 0.0
+
+
+def test_ewma_es_monotonicity():
+    mild = pd.Series([-0.01, -0.02, 0.00])
+    severe = pd.Series([-0.10, -0.20, -0.30])
+    assert ewma_es(severe) < ewma_es(mild)
+
+
+def test_scale_volatility_basic():
+    assert scale_volatility(0.10, 20, 10) == pytest.approx(0.10 * np.sqrt(2))
+
+
+def test_scale_volatility_zero():
+    assert scale_volatility(0.0, 20) == 0.0
+
+
+def test_scale_volatility_monotonicity():
+    assert scale_volatility(0.10, 20) > scale_volatility(0.10, 10)
+
+
+def test_sample_skewness_zero_for_symmetric():
+    r = pd.Series([-1, 0, 1])
+    assert abs(sample_skewness(r)) < 1e-6
+
+
+def test_sample_kurtosis_zero_for_normal_like():
+    np.random.seed(0)
+    r = pd.Series(np.random.normal(size=5000))
+    assert abs(sample_kurtosis(r)) < 0.2  # approximate
+
+
+def test_sample_skewness_sign():
+    r = pd.Series([-3, -2, -1, 0, 10])
+    assert sample_skewness(r) > 0  # right tail
+
+
+def test_sample_kurtosis_heavy_tails():
+    r = pd.Series(np.random.standard_t(df=3, size=5000))
+    assert sample_kurtosis(r) > 0

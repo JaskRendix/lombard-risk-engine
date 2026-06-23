@@ -74,7 +74,7 @@ def _norm_ppf(p: float) -> float:
     return num / den
 
 
-def cornish_fisher_var(returns, alpha: float = ALPHA) -> float:
+def cornish_fisher_var(returns: pd.Series, alpha: float = ALPHA) -> float:
     r = np.asarray(returns)
     mu = r.mean()
     sigma = r.std(ddof=1)
@@ -96,3 +96,69 @@ def cornish_fisher_var(returns, alpha: float = ALPHA) -> float:
     )
 
     return mu + z_cf * sigma
+
+
+def expected_shortfall_from_returns(returns: pd.Series, alpha: float = ALPHA) -> float:
+    """Historical Expected Shortfall (left tail)."""
+    r = np.asarray(returns)
+    var = np.quantile(r, 1 - alpha)
+    tail = r[r < var]
+    if len(tail) == 0:
+        return var  # fallback
+    return tail.mean()
+
+
+def gaussian_es(returns: pd.Series, alpha: float = ALPHA) -> float:
+    r = np.asarray(returns)
+    mu = r.mean()
+    sigma = r.std(ddof=1)
+    if sigma == 0:
+        return mu
+
+    z = _norm_ppf(alpha)
+    pdf = np.exp(-0.5 * z * z) / np.sqrt(2 * np.pi)
+
+    es = mu - sigma * pdf / (1 - alpha)
+    return es
+
+
+def ewma_es(returns: pd.Series, alpha: float = ALPHA) -> float:
+    r = np.asarray(returns)
+    lam = EWMA_LAMBDA
+
+    # EWMA weights
+    w = np.array([lam**i for i in range(len(r))])[::-1]
+    w /= w.sum()
+
+    # Weighted VaR
+    sorted_r = np.sort(r)
+    sorted_w = w[np.argsort(r)]
+    cum_w = np.cumsum(sorted_w)
+
+    idx = np.searchsorted(cum_w, 1 - alpha)
+    var = sorted_r[idx]
+
+    # Weighted ES
+    tail_mask = sorted_r < var
+    if not tail_mask.any():
+        return var
+
+    return np.average(sorted_r[tail_mask], weights=sorted_w[tail_mask])
+
+
+def scale_volatility(vol: float, horizon_days: int, base_horizon: int = 10) -> float:
+    return vol * np.sqrt(horizon_days / base_horizon)
+
+
+def sample_skewness(returns: pd.Series) -> float:
+    r = np.asarray(returns)
+    mu = r.mean()
+    sigma = r.std(ddof=1)
+    return ((r - mu) ** 3).mean() / sigma**3 if sigma > 0 else 0.0
+
+
+def sample_kurtosis(returns: pd.Series) -> float:
+    r = np.asarray(returns)
+    mu = r.mean()
+    sigma = r.std(ddof=1)
+    return ((r - mu) ** 4).mean() / sigma**4 - 3 if sigma > 0 else 0.0

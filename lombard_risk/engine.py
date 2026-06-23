@@ -7,7 +7,14 @@ from .config import ALPHA, MARGIN_CALL_BUFFER
 from .haircut import HaircutComponents, vol_addon_from_var
 from .liquidity import LiquidityProfile, liquidity_addon
 from .ltv import LTVProfile
-from .market_models import cornish_fisher_var, portfolio_returns, var_from_returns
+from .market_models import (
+    cornish_fisher_var,
+    ewma_es,
+    expected_shortfall_from_returns,
+    gaussian_es,
+    portfolio_returns,
+    var_from_returns,
+)
 
 
 @dataclass
@@ -20,6 +27,10 @@ class LombardRiskResult:
     stress_ltv_pct: float
     post_haircut_value: float
     breach_distance_pct: float
+    var_used: float | None = None
+    es_hist: float | None = None
+    es_gaussian: float | None = None
+    es_ewma: float | None = None
 
 
 class LombardRiskEngine:
@@ -47,6 +58,10 @@ class LombardRiskEngine:
         else:
             var = var_from_returns(port_ret, self.alpha)
 
+        es_hist = expected_shortfall_from_returns(port_ret, self.alpha)
+        es_gauss = gaussian_es(port_ret, self.alpha)
+        es_ewma = ewma_es(port_ret, self.alpha)
+
         vol_addon = vol_addon_from_var(abs(var))
         liq_addon = max(liquidity_addon(lp) for lp in liq_profiles.values())
         conc_addon = concentration_addon(weights)
@@ -72,8 +87,11 @@ class LombardRiskEngine:
             current_ltv_pct=ltv.current_ltv * 100,
             margin_call_threshold_pct=margin_call_threshold * 100,
             margin_call_triggered=ltv.margin_call_triggered(margin_call_threshold),
-            # New diagnostics
             stress_ltv_pct=ltv.stress_ltv * 100,
             post_haircut_value=ltv.post_haircut_value,
             breach_distance_pct=ltv.breach_distance(margin_call_threshold) * 100,
+            var_used=var,
+            es_hist=es_hist,
+            es_gaussian=es_gauss,
+            es_ewma=es_ewma,
         )
