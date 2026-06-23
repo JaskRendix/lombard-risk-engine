@@ -8,7 +8,10 @@ A modular Python package for computing collateral haircuts, LTV limits, liquidit
 
 - Portfolio returns aggregation  
 - EWMA volatility  
-- Parametric VaR‑based volatility add‑on  
+- Parametric VaR (historical)  
+- Cornish–Fisher VaR (skew/kurtosis‑adjusted)  
+- Expected Shortfall (historical, Gaussian, EWMA)  
+- Volatility scaling utilities  
 - Liquidity discounts based on ADV and position size  
 - Single‑name concentration add‑on  
 - Combined haircut model  
@@ -103,15 +106,22 @@ result = engine.evaluate(
     base_haircut=0.20,
     liq_profiles=liq_profiles,
 )
+```
 
-print(result)
+Optional: enable Cornish–Fisher VaR
+
+```python
+result = engine.evaluate(
+    ...,
+    use_cornish_fisher=True,
+)
 ```
 
 ---
 
 ## Configuration
 
-All tunable parameters are defined in `lombard_risk/config.py`:
+All tunable parameters are defined in `lombard_risk/config.toml`:
 
 - VaR confidence level  
 - EWMA lambda  
