@@ -7,7 +7,7 @@ from .config import ALPHA, MARGIN_CALL_BUFFER
 from .haircut import HaircutComponents, vol_addon_from_var
 from .liquidity import LiquidityProfile, liquidity_addon
 from .ltv import LTVProfile
-from .market_models import portfolio_returns, var_from_returns
+from .market_models import cornish_fisher_var, portfolio_returns, var_from_returns
 
 
 @dataclass
@@ -37,12 +37,17 @@ class LombardRiskEngine:
         weights: pd.Series,
         base_haircut: float,
         liq_profiles: dict[str, LiquidityProfile],
+        use_cornish_fisher: bool = False,
     ) -> LombardRiskResult:
 
         port_ret = portfolio_returns(returns_df, weights)
-        var = var_from_returns(port_ret, self.alpha)
-        vol_addon = vol_addon_from_var(abs(var))
 
+        if use_cornish_fisher:
+            var = cornish_fisher_var(port_ret, self.alpha)
+        else:
+            var = var_from_returns(port_ret, self.alpha)
+
+        vol_addon = vol_addon_from_var(abs(var))
         liq_addon = max(liquidity_addon(lp) for lp in liq_profiles.values())
         conc_addon = concentration_addon(weights)
 

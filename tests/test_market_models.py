@@ -3,7 +3,12 @@ import pandas as pd
 import pytest
 
 from lombard_risk.config import ALPHA, EWMA_LAMBDA
-from lombard_risk.market_models import ewma_vol, portfolio_returns, var_from_returns
+from lombard_risk.market_models import (
+    cornish_fisher_var,
+    ewma_vol,
+    portfolio_returns,
+    var_from_returns,
+)
 
 
 def test_ewma_vol_basic():
@@ -100,3 +105,40 @@ def test_var_from_returns_default_alpha():
     returns = pd.Series([-0.01, -0.02, -0.03, 0.01])
     expected = np.quantile(returns, 1 - ALPHA)
     assert var_from_returns(returns) == expected
+
+
+def test_cornish_fisher_var_negative():
+    np.random.seed(0)
+    r = np.random.normal(0, 0.01, size=5000)
+    var_cf = cornish_fisher_var(r, 0.99)
+    assert var_cf < 0
+
+
+def test_cornish_fisher_equals_gaussian_for_normal():
+    np.random.seed(0)
+    r = np.random.normal(0, 0.01, size=20000)
+
+    var_gauss = var_from_returns(pd.Series(r), 0.99)
+    var_cf = cornish_fisher_var(r, 0.99)
+
+    # CF should be extremely close to Gaussian
+    assert np.isclose(var_cf, var_gauss, atol=1e-3)
+
+
+def test_cornish_fisher_more_conservative_for_fat_tails():
+    np.random.seed(0)
+
+    # Student-t with df=3 has heavy tails
+    t = np.random.standard_t(df=3, size=20000) * 0.01
+
+    var_gauss = var_from_returns(pd.Series(t), 0.99)
+    var_cf = cornish_fisher_var(t, 0.99)
+
+    # CF VaR should be more negative (larger loss)
+    assert var_cf < var_gauss
+
+
+def test_cornish_fisher_small_sample_stability():
+    r = np.array([0.01, -0.02, 0.03])
+    var_cf = cornish_fisher_var(r, 0.95)
+    assert np.isfinite(var_cf)
