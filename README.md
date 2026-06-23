@@ -1,6 +1,6 @@
 # Lombard Lending Risk Engine
 
-A modular Python package for computing collateral haircuts, LTV limits, liquidity and concentration add‑ons, and stress‑scenario impacts for Lombard lending portfolios. The package provides a reproducible framework for evaluating credit exposure on portfolios pledged as collateral.
+A modular Python package for computing collateral haircuts, LTV limits, liquidity, concentration, wrong‑way‑risk adjustments, and stress‑scenario impacts for Lombard lending portfolios. The package provides a reproducible framework for evaluating credit exposure on portfolios pledged as collateral.
 
 ---
 
@@ -13,7 +13,8 @@ A modular Python package for computing collateral haircuts, LTV limits, liquidit
 - Expected Shortfall (historical, Gaussian, EWMA)  
 - Volatility scaling utilities  
 - Liquidity discounts based on ADV and position size  
-- Single‑name concentration add‑on  
+- Single‑name concentration add‑on (linear or quadratic)  
+- Wrong‑way‑risk multiplier (borrower–collateral correlation)  
 - Combined haircut model  
 - LTV and margin‑call evaluation  
 - Stress scenario utilities  
@@ -52,6 +53,7 @@ lombard_risk/
     haircut.py
     ltv.py
     stress.py
+    wwr.py
     engine.py
 scripts/
     run_lombard_eval.py
@@ -117,6 +119,24 @@ result = engine.evaluate(
 )
 ```
 
+Optional: use quadratic concentration curve
+
+```python
+result = engine.evaluate(
+    ...,
+    use_quadratic_concentration=True,
+)
+```
+
+Optional: apply wrong‑way‑risk multiplier
+
+```python
+result = engine.evaluate(
+    ...,
+    wwr_correlation=0.6,  # borrower–collateral correlation
+)
+```
+
 ---
 
 ## Configuration
@@ -128,6 +148,8 @@ All tunable parameters are defined in `lombard_risk/config.toml`:
 - Volatility buffer  
 - Liquidity thresholds and discounts  
 - Concentration threshold and penalty  
+- Optional quadratic concentration toggle  
+- Wrong‑way‑risk lambda  
 - Margin‑call buffer  
 - Default base haircut  
 
