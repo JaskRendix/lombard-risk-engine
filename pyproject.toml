@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "pytest",
+    "pytest-cov",
 ]
 
 [build-system]
@@ -26,3 +27,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["lombard_risk*"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=lombard_risk --cov-report=term-missing"
