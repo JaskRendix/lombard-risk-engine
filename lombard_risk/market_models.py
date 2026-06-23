@@ -150,6 +150,10 @@ def scale_volatility(vol: float, horizon_days: int, base_horizon: int = 10) -> f
     return vol * np.sqrt(horizon_days / base_horizon)
 
 
+def scale_var(var: float, horizon_days: int, base_horizon: int = 10) -> float:
+    return var * np.sqrt(horizon_days / base_horizon)
+
+
 def sample_skewness(returns: pd.Series) -> float:
     r = np.asarray(returns)
     mu = r.mean()

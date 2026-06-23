@@ -13,6 +13,7 @@ from .market_models import (
     expected_shortfall_from_returns,
     gaussian_es,
     portfolio_returns,
+    scale_var,
     var_from_returns,
 )
 
@@ -58,11 +59,14 @@ class LombardRiskEngine:
         else:
             var = var_from_returns(port_ret, self.alpha)
 
+        max_horizon = max(lp.liquidity_horizon_days for lp in liq_profiles.values())
+        var_scaled = scale_var(abs(var), max_horizon)
+
         es_hist = expected_shortfall_from_returns(port_ret, self.alpha)
         es_gauss = gaussian_es(port_ret, self.alpha)
         es_ewma = ewma_es(port_ret, self.alpha)
 
-        vol_addon = vol_addon_from_var(abs(var))
+        vol_addon = vol_addon_from_var(var_scaled)
         liq_addon = max(liquidity_addon(lp) for lp in liq_profiles.values())
         conc_addon = concentration_addon(weights)
 

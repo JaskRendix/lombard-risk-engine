@@ -8,6 +8,7 @@ class LiquidityProfile:
     isin: str
     adv: float
     position_value: float
+    liquidity_horizon_days: int = 10
 
 
 def liquidity_addon(lp: LiquidityProfile) -> float:

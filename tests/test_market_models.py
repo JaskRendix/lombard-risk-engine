@@ -12,6 +12,7 @@ from lombard_risk.market_models import (
     portfolio_returns,
     sample_kurtosis,
     sample_skewness,
+    scale_var,
     scale_volatility,
     var_from_returns,
 )
@@ -233,3 +234,32 @@ def test_sample_skewness_sign():
 def test_sample_kurtosis_heavy_tails():
     r = pd.Series(np.random.standard_t(df=3, size=5000))
     assert sample_kurtosis(r) > 0
+
+
+def test_scale_var_identity():
+    # 10‑day horizon = base horizon → no scaling
+    assert scale_var(0.05, 10) == 0.05
+
+
+def test_scale_var_longer_horizon():
+    # 20‑day horizon → sqrt(2) scaling
+    out = scale_var(0.10, 20)
+    expected = 0.10 * np.sqrt(2)
+    assert np.isclose(out, expected)
+
+
+def test_scale_var_shorter_horizon():
+    # 5‑day horizon → sqrt(0.5) scaling
+    out = scale_var(0.10, 5)
+    expected = 0.10 * np.sqrt(0.5)
+    assert np.isclose(out, expected)
+
+
+def test_scale_var_zero():
+    assert scale_var(0.0, 20) == 0.0
+
+
+def test_scale_var_monotonicity():
+    v = 0.10
+    assert scale_var(v, 20) > scale_var(v, 10)
+    assert scale_var(v, 10) > scale_var(v, 5)
