@@ -1,0 +1,26 @@
+# --- Market Risk ---
+ALPHA = 0.99
+EWMA_LAMBDA = 0.94
+VOL_BUFFER = 0.02
+
+# --- Liquidity Risk ---
+[liquidity.thresholds]
+low = 0.1
+medium = 0.5
+high = 1.0
+
+[liquidity.discounts]
+low = 0.00
+medium = 0.02
+high = 0.05
+extreme = 0.10
+
+# --- Concentration Risk ---
+CONCENTRATION_THRESHOLD = 0.20
+CONCENTRATION_PENALTY = 0.05
+
+# --- Margin Call ---
+MARGIN_CALL_BUFFER = 0.10
+
+# --- Collateral ---
+DEFAULT_BASE_HAIRCUT = 0.30
