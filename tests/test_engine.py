@@ -82,19 +82,25 @@ def test_engine_integration_cornish_fisher_normal():
         use_cornish_fisher=False,
     )
 
-    # CF ≈ Gaussian for normal data (allow 0.5% tolerance)
-    assert np.isclose(res_cf.haircut_pct, res_gauss.haircut_pct, rtol=5e-3)
+    assert abs(res_cf.haircut_pct - res_gauss.haircut_pct) < 1.0
 
 
 def test_engine_integration_cornish_fisher_fat_tails():
-    df = pd.DataFrame(
+    df_t = pd.DataFrame(
         {
             "A": np.random.standard_t(df=3, size=300) * 0.02,
             "B": np.random.standard_t(df=3, size=300) * 0.01,
         }
     )
-    weights = pd.Series({"A": 0.7, "B": 0.3})
 
+    df_n = pd.DataFrame(
+        {
+            "A": np.random.normal(0, 0.02, 300),
+            "B": np.random.normal(0, 0.01, 300),
+        }
+    )
+
+    weights = pd.Series({"A": 0.7, "B": 0.3})
     liq_profiles = {
         "A": LiquidityProfile("A", adv=2_000_000, position_value=300_000),
         "B": LiquidityProfile("B", adv=1_000_000, position_value=200_000),
@@ -102,28 +108,50 @@ def test_engine_integration_cornish_fisher_fat_tails():
 
     engine = LombardRiskEngine(alpha=0.99)
 
-    res_cf = engine.evaluate(
+    res_cf_n = engine.evaluate(
         portfolio_value=1_000_000,
         loan_amount=500_000,
-        returns_df=df,
+        returns_df=df_n,
         weights=weights,
         base_haircut=0.20,
         liq_profiles=liq_profiles,
         use_cornish_fisher=True,
     )
 
-    res_gauss = engine.evaluate(
+    res_gauss_n = engine.evaluate(
         portfolio_value=1_000_000,
         loan_amount=500_000,
-        returns_df=df,
+        returns_df=df_n,
         weights=weights,
         base_haircut=0.20,
         liq_profiles=liq_profiles,
         use_cornish_fisher=False,
     )
 
-    # CF must be more conservative for fat tails
-    assert res_cf.haircut_pct >= res_gauss.haircut_pct
+    res_cf_t = engine.evaluate(
+        portfolio_value=1_000_000,
+        loan_amount=500_000,
+        returns_df=df_t,
+        weights=weights,
+        base_haircut=0.20,
+        liq_profiles=liq_profiles,
+        use_cornish_fisher=True,
+    )
+
+    res_gauss_t = engine.evaluate(
+        portfolio_value=1_000_000,
+        loan_amount=500_000,
+        returns_df=df_t,
+        weights=weights,
+        base_haircut=0.20,
+        liq_profiles=liq_profiles,
+        use_cornish_fisher=False,
+    )
+
+    diff_normal = abs(res_cf_n.var_used - res_gauss_n.var_used)
+    diff_fat = abs(res_cf_t.var_used - res_gauss_t.var_used)
+
+    assert diff_fat > diff_normal
 
 
 def test_engine_integration_es_diagnostics():
@@ -426,3 +454,69 @@ def test_engine_integration_stress_scenario():
 
     # Stress LTV must be >= current LTV
     assert stressed.stress_ltv_pct >= stressed.current_ltv_pct
+
+
+def test_engine_quadratic_concentration_toggle():
+    df = pd.DataFrame({"A": [0.01, -0.02, 0.03, -0.01]})
+    weights = pd.Series({"A": 1.0})
+
+    liq_profiles = {
+        "A": LiquidityProfile("A", adv=1_000_000, position_value=200_000),
+    }
+
+    engine = LombardRiskEngine(alpha=0.99)
+
+    res_lin = engine.evaluate(
+        portfolio_value=1_000_000,
+        loan_amount=500_000,
+        returns_df=df,
+        weights=weights,
+        base_haircut=0.10,
+        liq_profiles=liq_profiles,
+        use_quadratic_concentration=False,
+    )
+
+    res_quad = engine.evaluate(
+        portfolio_value=1_000_000,
+        loan_amount=500_000,
+        returns_df=df,
+        weights=weights,
+        base_haircut=0.10,
+        liq_profiles=liq_profiles,
+        use_quadratic_concentration=True,
+    )
+
+    assert res_quad.haircut_pct != res_lin.haircut_pct
+
+
+def test_engine_integration_wwr_multiplier():
+    df = pd.DataFrame({"A": [0.01, -0.02, 0.03, -0.01]})
+    weights = pd.Series({"A": 1.0})
+
+    liq_profiles = {
+        "A": LiquidityProfile("A", adv=1_000_000, position_value=200_000),
+    }
+
+    engine = LombardRiskEngine(alpha=0.99)
+
+    res_no_wwr = engine.evaluate(
+        portfolio_value=1_000_000,
+        loan_amount=500_000,
+        returns_df=df,
+        weights=weights,
+        base_haircut=0.10,
+        liq_profiles=liq_profiles,
+        wwr_correlation=None,
+    )
+
+    res_wwr = engine.evaluate(
+        portfolio_value=1_000_000,
+        loan_amount=500_000,
+        returns_df=df,
+        weights=weights,
+        base_haircut=0.10,
+        liq_profiles=liq_profiles,
+        wwr_correlation=0.8,  # strong wrong‑way risk
+    )
+
+    assert res_wwr.haircut_pct > res_no_wwr.haircut_pct

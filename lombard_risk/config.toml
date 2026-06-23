@@ -24,3 +24,5 @@ MARGIN_CALL_BUFFER = 0.10
 
 # --- Collateral ---
 DEFAULT_BASE_HAIRCUT = 0.30
+
+WWR_LAMBDA = 0.25

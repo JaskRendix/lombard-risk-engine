@@ -17,3 +17,13 @@ def concentration_addon(weights: pd.Series) -> float:
 
     # penalty applied per 10% above threshold
     return CONCENTRATION_PENALTY * (excess / 0.10)
+
+
+def quadratic_concentration_addon(weights: pd.Series) -> float:
+    max_w = float(weights.max())
+
+    if max_w <= CONCENTRATION_THRESHOLD:
+        return 0.0
+
+    excess = max_w - CONCENTRATION_THRESHOLD
+    return CONCENTRATION_PENALTY * (excess**2)

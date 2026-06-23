@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from .concentration import concentration_addon
+from .concentration import concentration_addon, quadratic_concentration_addon
 from .config import ALPHA, MARGIN_CALL_BUFFER
 from .haircut import HaircutComponents, vol_addon_from_var
 from .liquidity import LiquidityProfile, liquidity_addon
@@ -50,6 +50,8 @@ class LombardRiskEngine:
         base_haircut: float,
         liq_profiles: dict[str, LiquidityProfile],
         use_cornish_fisher: bool = False,
+        use_quadratic_concentration: bool = False,
+        wwr_correlation: float | None = None,
     ) -> LombardRiskResult:
 
         port_ret = portfolio_returns(returns_df, weights)
@@ -68,7 +70,11 @@ class LombardRiskEngine:
 
         vol_addon = vol_addon_from_var(var_scaled)
         liq_addon = max(liquidity_addon(lp) for lp in liq_profiles.values())
-        conc_addon = concentration_addon(weights)
+
+        if use_quadratic_concentration:
+            conc_addon = quadratic_concentration_addon(weights)
+        else:
+            conc_addon = concentration_addon(weights)
 
         hc = HaircutComponents(
             base=base_haircut,
@@ -77,16 +83,24 @@ class LombardRiskEngine:
             conc_addon=conc_addon,
         )
 
+        if wwr_correlation is not None:
+            from .config import WWR_LAMBDA
+
+            wwr_mult = 1.0 + WWR_LAMBDA * wwr_correlation
+            haircut_total = hc.total * wwr_mult
+        else:
+            haircut_total = hc.total
+
         ltv = LTVProfile(
             portfolio_value=portfolio_value,
             loan_amount=loan_amount,
-            haircut=hc.total,
+            haircut=haircut_total,
         )
 
         margin_call_threshold = ltv.max_ltv + self.margin_call_buffer
 
         return LombardRiskResult(
-            haircut_pct=hc.total * 100,
+            haircut_pct=haircut_total * 100,
             max_ltv_pct=ltv.max_ltv * 100,
             current_ltv_pct=ltv.current_ltv * 100,
             margin_call_threshold_pct=margin_call_threshold * 100,
